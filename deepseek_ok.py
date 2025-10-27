@@ -30,8 +30,8 @@ exchange = ccxt.okx({
 # 交易参数配置
 TRADE_CONFIG = {
     'symbol': 'BTC/USDT:USDT',  # OKX的合约符号格式
-    'amount': 0.01,  # 交易数量 (BTC)
-    'leverage': 20,  # 杠杆倍数
+    'amount': 0.001,  # 交易数量 (BTC)
+    'leverage': 10,  # 杠杆倍数
     'timeframe': '15m',  # 使用15分钟K线
     'test_mode': False,  # 测试模式
 }
@@ -255,7 +255,7 @@ def execute_trade(signal_data, price_data):
                     TRADE_CONFIG['symbol'],
                     'buy',
                     current_position['size'],
-                    params={'reduceOnly': True, 'tag': 'f1ee03b510d5SUDE'}
+                    params={'posSide': 'short', 'reduceOnly': True, 'tag': 'f1ee03b510d5SUDE'}
                 )
                 time.sleep(1)
                 # 开多仓
@@ -263,7 +263,7 @@ def execute_trade(signal_data, price_data):
                     TRADE_CONFIG['symbol'],
                     'buy',
                     TRADE_CONFIG['amount'],
-                    params={'tag': 'f1ee03b510d5SUDE'}
+                    params={'posSide': 'long', 'tag': 'f1ee03b510d5SUDE'}
                 )
             elif not current_position:
                 logger.info("开多仓...")
@@ -271,7 +271,7 @@ def execute_trade(signal_data, price_data):
                     TRADE_CONFIG['symbol'],
                     'buy',
                     TRADE_CONFIG['amount'],
-                    params={'tag': 'f1ee03b510d5SUDE'}
+                    params={'posSide': 'long', 'tag': 'f1ee03b510d5SUDE'}
                 )
             else:
                 logger.info("已持有多仓，无需操作")
@@ -284,7 +284,7 @@ def execute_trade(signal_data, price_data):
                     TRADE_CONFIG['symbol'],
                     'sell',
                     current_position['size'],
-                    params={'reduceOnly': True, 'tag': 'f1ee03b510d5SUDE'}
+                    params={'posSide': 'long', 'reduceOnly': True, 'tag': 'f1ee03b510d5SUDE'}
                 )
                 time.sleep(1)
                 # 开空仓
@@ -292,7 +292,7 @@ def execute_trade(signal_data, price_data):
                     TRADE_CONFIG['symbol'],
                     'sell',
                     TRADE_CONFIG['amount'],
-                    params={'tag': 'f1ee03b510d5SUDE'}
+                    params={'posSide': 'short', 'tag': 'f1ee03b510d5SUDE'}
                 )
             elif not current_position:
                 logger.info("开空仓...")
@@ -300,7 +300,7 @@ def execute_trade(signal_data, price_data):
                     TRADE_CONFIG['symbol'],
                     'sell',
                     TRADE_CONFIG['amount'],
-                    params={'tag': 'f1ee03b510d5SUDE'}
+                    params={'posSide': 'short', 'tag': 'f1ee03b510d5SUDE'}
                 )
             else:
                 logger.info("已持有空仓，无需操作")
