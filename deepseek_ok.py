@@ -162,7 +162,7 @@ def analyze_with_deepseek(price_data):
 
     # 添加当前持仓信息
     current_pos = get_current_position()
-    position_text = "无持仓" if not current_pos else f"{current_pos['side']}仓, 数量: {current_pos['size']}, 盈亏: {current_pos['unrealized_pnl']:.2f}USDT"
+    position_text = "无持仓" if not current_pos else f"{current_pos['side']}仓, 数量: {amount_to_usdt(current_pos['size'])}USDT, 盈亏: {current_pos['unrealized_pnl']:.2f}USDT"
 
     prompt = f"""
     你是一个专业的加密货币交易分析师。请基于以下{TRADE_CONFIG['symbol']} {TRADE_CONFIG['timeframe']}周期数据进行分析：
@@ -188,6 +188,7 @@ def analyze_with_deepseek(price_data):
     3. 基于技术分析建议合理的止损价位
     4. 基于技术分析建议合理的止盈价位
     5. 评估信号信心程度
+    6. "short仓"是做空，"long仓"是做多
 
     请用以下JSON格式回复：
     {{
@@ -292,6 +293,68 @@ def usdt_to_amount(usdt_amount: float, symbol: str | None = None, leverage: int 
 
     except Exception as e:
         logger.error(f"usdt_to_amount 计算失败: {e}")
+        raise
+
+
+# 将 amount 转 usdt
+def amount_to_usdt(amount: float, symbol: str | None = None, leverage: int | None = None) -> float:
+    """
+    将合约数量（contracts/张）转换为以 USDT 表示的仓位名义价值（不考虑手续费）。
+    计算思路（OKX USDT 永续合约 swap）：
+    - 获取 market.contractSize（每张合约代表多少基础资产）
+    - 获取当前价格（ticker.last）
+    - 每张合约的名义价值 = contractSize * price（单位：USDT）
+    - 名义价值 = amount * 每张合约的名义价值
+    - 如果传入 leverage，则返回保证金计算（即名义价值 / leverage），否则返回名义价值
+    返回值：
+    - 当 leverage 提供时返回需要占用的保证金（USDT）
+    - 当 leverage 未提供时返回名义价值（USDT）
+    """
+    try:
+        symbol = symbol or TRADE_CONFIG['symbol']
+        leverage = leverage or TRADE_CONFIG['leverage']
+
+        # 获取市场信息
+        market = exchange.market(symbol)
+        # 尝试从 market 获取 contract size 字段
+        contract_size = None
+        for key in ('contractSize', 'contract_size', 'contractSizeUsd', 'contract_size_usd'):
+            if key in market and market[key] is not None:
+                try:
+                    contract_size = float(market[key])
+                    break
+                except Exception:
+                    continue
+        if contract_size is None:
+            # 如果没有 contract size，默认1（OKX USDT合约常为1）
+            contract_size = 1.0
+
+        # 获取当前价格（使用 ticker 的 last）
+        ticker = exchange.fetch_ticker(symbol)
+        price = float(ticker.get('last') or ticker.get('close') or ticker.get('bid') or ticker.get('ask'))
+        if price <= 0:
+            raise ValueError("获取到的价格不合法")
+
+        # 每张合约的名义价值（USDT）
+        contract_value = contract_size * price
+
+        # 计算名义价值
+        nominal_value = float(amount) * contract_value
+
+        # 如果提供了杠杆，则计算所需保证金（名义价值 / leverage）
+        if leverage and float(leverage) > 0:
+            required_margin = nominal_value / float(leverage)
+        else:
+            required_margin = nominal_value
+
+        logger.info(f"amount_to_usdt: amount={amount}, leverage={leverage}, price={price:.4f}, "
+                    f"contract_size={contract_size}, contract_value={contract_value:.4f} => "
+                    f"nominal_value={nominal_value:.4f}, required_margin={required_margin:.4f}")
+
+        return required_margin
+
+    except Exception as e:
+        logger.error(f"amount_to_usdt 计算失败: {e}")
         raise
 
 
