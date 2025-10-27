@@ -59,8 +59,8 @@ def setup_exchange():
         logger.info(f"当前USDT余额: {usdt_balance:.2f}")
 
         # # 设置持仓模式 (双向持仓)
-        # exchange.set_position_mode(False, TRADE_CONFIG['symbol'])
-        # logger.info("设置单向持仓")
+        exchange.set_position_mode(False, TRADE_CONFIG['symbol'])
+        logger.info("设置单向持仓")
 
         return True
     except Exception as e:
@@ -255,7 +255,7 @@ def execute_trade(signal_data, price_data):
                     TRADE_CONFIG['symbol'],
                     'buy',
                     current_position['size'],
-                    params={'posSide': 'short', 'reduceOnly': True, 'tag': 'f1ee03b510d5SUDE'}
+                    params={'reduceOnly': True, 'tag': 'f1ee03b510d5SUDE'}
                 )
                 time.sleep(1)
                 # 开多仓
@@ -263,7 +263,7 @@ def execute_trade(signal_data, price_data):
                     TRADE_CONFIG['symbol'],
                     'buy',
                     TRADE_CONFIG['amount'],
-                    params={'posSide': 'long', 'tag': 'f1ee03b510d5SUDE'}
+                    params={'tag': 'f1ee03b510d5SUDE'}
                 )
             elif not current_position:
                 logger.info("开多仓...")
@@ -271,7 +271,7 @@ def execute_trade(signal_data, price_data):
                     TRADE_CONFIG['symbol'],
                     'buy',
                     TRADE_CONFIG['amount'],
-                    params={'posSide': 'long', 'tag': 'f1ee03b510d5SUDE'}
+                    params={'tag': 'f1ee03b510d5SUDE'}
                 )
             else:
                 logger.info("已持有多仓，无需操作")
@@ -284,7 +284,7 @@ def execute_trade(signal_data, price_data):
                     TRADE_CONFIG['symbol'],
                     'sell',
                     current_position['size'],
-                    params={'posSide': 'long', 'reduceOnly': True, 'tag': 'f1ee03b510d5SUDE'}
+                    params={'reduceOnly': True, 'tag': 'f1ee03b510d5SUDE'}
                 )
                 time.sleep(1)
                 # 开空仓
@@ -292,7 +292,7 @@ def execute_trade(signal_data, price_data):
                     TRADE_CONFIG['symbol'],
                     'sell',
                     TRADE_CONFIG['amount'],
-                    params={'posSide': 'short', 'tag': 'f1ee03b510d5SUDE'}
+                    params={'tag': 'f1ee03b510d5SUDE'}
                 )
             elif not current_position:
                 logger.info("开空仓...")
@@ -300,7 +300,7 @@ def execute_trade(signal_data, price_data):
                     TRADE_CONFIG['symbol'],
                     'sell',
                     TRADE_CONFIG['amount'],
-                    params={'posSide': 'short', 'tag': 'f1ee03b510d5SUDE'}
+                    params={'tag': 'f1ee03b510d5SUDE'}
                 )
             else:
                 logger.info("已持有空仓，无需操作")
