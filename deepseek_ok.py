@@ -1,4 +1,6 @@
 import time
+from typing import Literal, Any
+
 import schedule
 from openai import OpenAI
 import ccxt
@@ -68,6 +70,7 @@ def setup_exchange():
         return False
 
 
+# 获取k线数据
 def get_btc_ohlcv():
     """获取BTC/USDT的K线数据"""
     try:
@@ -96,6 +99,7 @@ def get_btc_ohlcv():
         return None
 
 
+# 获取当前持仓方向
 def get_current_position():
     """获取当前持仓情况"""
     try:
@@ -124,6 +128,7 @@ def get_current_position():
         return None
 
 
+# deepseek分析
 def analyze_with_deepseek(price_data):
     """使用DeepSeek分析市场并生成交易信号"""
 
@@ -356,9 +361,10 @@ def main():
     logger.info("已启用K线数据分析和持仓跟踪功能")
 
     # 设置交易所
-    if not setup_exchange():
-        logger.error("交易所初始化失败，程序退出")
-        return
+    setup_exchange()
+    # if not setup_exchange():
+    #     logger.error("交易所初始化失败，程序退出")
+    #     return
 
     # 根据时间周期设置执行频率
     if TRADE_CONFIG['timeframe'] == '1h':
