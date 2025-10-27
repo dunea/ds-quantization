@@ -32,7 +32,7 @@ exchange = ccxt.okx({
 # 交易参数配置
 TRADE_CONFIG = {
     'symbol': settings.SYMBOL,  # OKX的合约符号格式，'BTC/USDT:USDT'
-    'amount': settings.AMOUNT,  # 交易数量 (BTC)，0.01
+    'amount': settings.AMOUNT,  # 交易数量 (USDT)，0.01
     'leverage': settings.LEVERAGE,  # 杠杆倍数，10
     'timeframe': '15m',  # 使用15分钟K线
     'test_mode': False,  # 测试模式
@@ -234,6 +234,67 @@ def analyze_with_deepseek(price_data):
         return None
 
 
+# 将以 USDT 表示的仓位价值转换为合约数量（amount），适用于 OKX 永续合约（swap）。
+def usdt_to_amount(usdt_amount: float, symbol: str | None = None, leverage: int | None = None) -> float:
+    """
+    将以 USDT 表示的仓位价值转换为合约数量（amount），适用于 OKX 永续合约（swap）。
+    计算思路：
+    - 获取市场合约的 contractSize（每张合约代表多少基础资产，OKX 的 USDT 合约通常 contractSize=1）
+    - 获取当前价格（最新成交价 / ticker.last）
+    - 每张合约的名义价值 = contractSize * price（单位：USDT）
+    - 考虑杠杆：用 usdt_amount * leverage 来计算可动用的名义头寸
+    - 合约数量 = (usdt_amount * leverage) / 每张合约的名义价值
+
+    注意：
+    - 不同合约的 contractSize 字段名称在 ccxt 中可能为 'contractSize' 或 'contract_size'，代码中都做了尝试。
+    - 对于标的不同的合约（例如 BTC/USDT 与 USDT-M 合约）请确认 market 信息。
+    - 结果为浮点数，按交易所要求可能需要四舍五入或按步长（lot size）调整，
+      可在调用处根据 market['lotSize'] 或 market['precision']['amount'] 做额外处理。
+    """
+    try:
+        symbol = symbol or TRADE_CONFIG['symbol']
+        leverage = leverage or TRADE_CONFIG['leverage']
+
+        # 获取市场信息
+        market = exchange.market(symbol)
+        # 尝试从 market 获取 contract size 字段
+        contract_size = None
+        for key in ('contractSize', 'contract_size', 'contractSizeUsd', 'contract_size_usd'):
+            if key in market and market[key] is not None:
+                try:
+                    contract_size = float(market[key])
+                    break
+                except Exception:
+                    continue
+        if contract_size is None:
+            # 如果没有 contract size，默认1（OKX USDT合约常为1）
+            contract_size = 1.0
+
+        # 获取当前价格（使用 ticker 的 last）
+        ticker = exchange.fetch_ticker(symbol)
+        price = float(ticker.get('last') or ticker.get('close') or ticker.get('bid') or ticker.get('ask'))
+        if price <= 0:
+            raise ValueError("获取到的价格不合法")
+
+        # 每张合约的名义价值（USDT）
+        contract_value = contract_size * price
+
+        # 可动用名义头寸 = usdt_amount * leverage
+        nominal_position = float(usdt_amount) * float(leverage)
+
+        # 计算合约数量
+        contracts = nominal_position / contract_value
+
+        logger.info(f"usdt_to_amount: usdt_amount={usdt_amount}, leverage={leverage}, price={price:.4f}, "
+                    f"contract_size={contract_size}, contract_value={contract_value:.4f} => contracts={contracts:.6f}")
+
+        return contracts
+
+    except Exception as e:
+        logger.error(f"usdt_to_amount 计算失败: {e}")
+        raise
+
+
 def execute_trade(signal_data, price_data):
     """执行交易"""
     global position
@@ -267,7 +328,7 @@ def execute_trade(signal_data, price_data):
                 exchange.create_market_order(
                     TRADE_CONFIG['symbol'],
                     'buy',
-                    TRADE_CONFIG['amount'],
+                    usdt_to_amount(TRADE_CONFIG['amount']),
                     params={'tag': 'f1ee03b510d5SUDE'}
                 )
             elif not current_position:
@@ -275,7 +336,7 @@ def execute_trade(signal_data, price_data):
                 exchange.create_market_order(
                     TRADE_CONFIG['symbol'],
                     'buy',
-                    TRADE_CONFIG['amount'],
+                    usdt_to_amount(TRADE_CONFIG['amount']),
                     params={'tag': 'f1ee03b510d5SUDE'}
                 )
             else:
@@ -296,7 +357,7 @@ def execute_trade(signal_data, price_data):
                 exchange.create_market_order(
                     TRADE_CONFIG['symbol'],
                     'sell',
-                    TRADE_CONFIG['amount'],
+                    usdt_to_amount(TRADE_CONFIG['amount']),
                     params={'tag': 'f1ee03b510d5SUDE'}
                 )
             elif not current_position:
@@ -304,7 +365,7 @@ def execute_trade(signal_data, price_data):
                 exchange.create_market_order(
                     TRADE_CONFIG['symbol'],
                     'sell',
-                    TRADE_CONFIG['amount'],
+                    usdt_to_amount(TRADE_CONFIG['amount']),
                     params={'tag': 'f1ee03b510d5SUDE'}
                 )
             else:
