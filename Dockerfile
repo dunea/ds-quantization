@@ -1,36 +1,28 @@
-# 使用官方 Python 3.12.10 基础镜像
-FROM python:3.12.10-slim
+# 使用 Python 3.12 官方镜像作为基础镜像
+FROM python:3.12-slim
 
-# 环境变量，避免 Python 写入 .pyc 等，设置 UTF-8
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    VIRTUAL_ENV=/opt/venv
+# 环境配置
+ENV PIP_DEFAULT_TIMEOUT=100
+ENV PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 
-# 创建工作目录
-WORKDIR /app
+# 安装 PostgreSQL 开发包和其他必要工具
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-# 复制项目文件到镜像
-# 仅复制必要文件以便利用 Docker 缓存（先复制 requirements.txt）
-COPY requirements.txt /app/requirements.txt
-COPY .env /app/.env
-COPY deepseek_ok.py /app/deepseek_ok.py
-# 若需要其它脚本也可以复制（可选）
-# COPY deepseek.py /app/deepseek.py
+# 设置工作目录
+WORKDIR /work
 
-# 安装 virtualenv 并创建虚拟环境，然后通过 pip 安装依赖
-RUN python -m venv $VIRTUAL_ENV \
-    && . $VIRTUAL_ENV/bin/activate \
-    && pip install --upgrade pip setuptools wheel \
-    && pip install -r /app/requirements.txt \
-    && pip cache purge
+# 复制项目文件到工作目录
+COPY . /work
 
-# 将虚拟环境的 bin 路径加入 PATH（运行时会使用该环境）
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+# 安装 Python 依赖
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 默认为非交互模式（可根据需要修改）
-# 如果需要外部访问，可根据实际脚本暴露端口（此项目为脚本，通常无需暴露）
-# EXPOSE 8000
+# 暴露端口（如果你的应用需要监听端口）
+#EXPOSE 8089
 
-# 容器启动时执行 deepseek_ok.py
-# 使用 exec 形式避免 shell 处理信号问题
+# 设置容器启动时要执行的命令
 CMD ["python", "deepseek_ok.py"]
