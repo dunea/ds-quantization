@@ -1,4 +1,3 @@
-import os
 import time
 import schedule
 from openai import OpenAI
@@ -8,12 +7,13 @@ from datetime import datetime
 import json
 from dotenv import load_dotenv
 from logger import logger
+from settings import settings
 
 load_dotenv()
 
 # 初始化DeepSeek客户端
 deepseek_client = OpenAI(
-    api_key=os.getenv('DEEPSEEK_API_KEY'),
+    api_key=settings.DEEPSEEK_API_KEY,
     base_url="https://api.deepseek.com"
 )
 
@@ -22,9 +22,9 @@ exchange = ccxt.okx({
     'options': {
         'defaultType': 'swap',  # OKX使用swap表示永续合约
     },
-    'apiKey': os.getenv('OKX_API_KEY'),
-    'secret': os.getenv('OKX_SECRET'),
-    'password': os.getenv('OKX_PASSWORD'),  # OKX需要交易密码
+    'apiKey': settings.OKX_API_KEY,
+    'secret': settings.OKX_SECRET,
+    'password': settings.OKX_PASSWORD,  # OKX需要交易密码
 })
 
 # 交易参数配置
@@ -381,4 +381,24 @@ def main():
 
 
 if __name__ == "__main__":
+    # deepseek配置检查
+    if settings.DEEPSEEK_API_KEY == "":
+        logger.error("deepseek api key 未设置")
+        exit(1)
+
+    # 欧易配置检查
+    if (settings.OKX_API_KEY == ""
+            or settings.OKX_SECRET == ""
+            or settings.OKX_PASSWORD == ""
+            or settings.OKX_API_KEY is None
+            or settings.OKX_SECRET is None
+            or settings.OKX_PASSWORD is None):
+        logger.error("OKX 配置参数不全")
+        exit(1)
+
+    # 交易配置检查
+    if settings.SYMBOL == "" or settings.AMOUNT <= 0 or settings.LEVERAGE <= 0:
+        logger.error("交易配置参数不全")
+        exit(1)
+
     main()
