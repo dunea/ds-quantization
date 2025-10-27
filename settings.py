@@ -4,11 +4,6 @@ from typing import Optional
 from pydantic.v1 import Field
 from pydantic_settings import BaseSettings
 
-use_secret = True
-use_secret_env = os.getenv("USE_SECRET")
-if use_secret_env and use_secret_env.lower() == "false":
-    use_secret = False
-
 
 class Settings(BaseSettings):
     # deepseek
@@ -25,7 +20,7 @@ class Settings(BaseSettings):
 
     # 交易参数
     SYMBOL: str = Field(..., env="SYMBOL")  # 合约符号
-    AMOUNT: int = Field(..., env="AMOUNT")  # 交易数量
+    AMOUNT: float = Field(..., env="AMOUNT")  # 交易数量
     LEVERAGE: int = Field(..., env="LEVERAGE")  # 杠杆倍数
 
     class Config:
